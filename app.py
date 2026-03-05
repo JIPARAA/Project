@@ -71,15 +71,17 @@ if st.session_state.page == 1:
     st.title("Step 1: คำนวณค่า BMI ของคุณ ⚖️")
     st.write("ระบบจะใช้ค่า BMI เพื่อประเมินความพร้อมของข้อต่อและระบบเผาผลาญ")
     
-    weight = st.number_input("น้ำหนัก (กก.)", min_value=30.0, max_value=200.0, value=65.0)
-    height = st.number_input("ส่วนสูง (ซม.)", min_value=100.0, max_value=250.0, value=170.0)
+    # อัปเดต: บังคับทศนิยม 1 ตำแหน่งด้วย format="%.1f" และขยับทีละ 0.1
+    weight = st.number_input("น้ำหนัก (กก.)", min_value=30.0, max_value=200.0, value=65.0, step=0.1, format="%.1f")
+    height = st.number_input("ส่วนสูง (ซม.)", min_value=100.0, max_value=250.0, value=170.0, step=0.1, format="%.1f")
     
     bmi = weight / ((height/100)**2)
     st.session_state.bmi = bmi
     
     st.subheader(f"ดัชนีมวลกาย (BMI) ของคุณคือ: {bmi:.2f}")
     
-    if st.button("บันทึกข้อมูลและไปขั้นตอนถัดไป ➡️"):
+    # อัปเดต: เปลี่ยนคำในปุ่มกด
+    if st.button("ต่อไป"):
         go_to_page2()
 
 # หน้าที่ 2: ประเมินการพักผ่อนและความเหนื่อยล้า
@@ -119,17 +121,12 @@ elif st.session_state.page == 2:
             if dt_wake < dt_bed:
                 dt_wake += timedelta(days=1)
                 
-            # คำนวณเป็นวินาทีทั้งหมดก่อน
             total_seconds = (dt_wake - dt_bed).total_seconds()
-            
-            # เก็บค่าทศนิยมไว้ให้ AI ประมวลผลเหมือนเดิม
             sleep_hours = total_seconds / 3600
             
-            # แปลงเป็น ชั่วโมง และ นาที สำหรับแสดงผลให้คนดู
             display_h = int(total_seconds // 3600)
             display_m = int((total_seconds % 3600) // 60)
             
-            # แสดงผลแบบใหม่ อ่านง่าย ไม่งง
             st.info(f"⏳ ระบบประมวลผล: คุณนอนหลับไปทั้งหมด **{display_h} ชั่วโมง {display_m} นาที**")
             
     except Exception:
