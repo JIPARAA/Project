@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, date, timedelta
 
 # --- 1. ตั้งค่าหน้าเว็บ ---
 st.set_page_config(page_title="AI Exercise Advisor", page_icon="💪", layout="centered")
@@ -92,25 +91,12 @@ if st.session_state.page == 1:
 elif st.session_state.page == 2:
     st.title("Step 2: วิเคราะห์สภาวะร่างกาย 🧠")
     st.write("ให้ AI ช่วยวิเคราะห์ระดับความพร้อมของร่างกายคุณในวันนี้")
-    
     st.divider()
     
-    # --- ส่วนที่ 1: คำนวณการพักผ่อน ---
+    # --- ส่วนที่ 1: กรอกเวลาพักผ่อน (เป็นตัวเลข) ---
     st.subheader("💤 ข้อมูลการพักผ่อน")
-    col1, col2 = st.columns(2)
-    with col1:
-        bed_time = st.time_input("เวลาเข้านอน", value=datetime.strptime("23:00", "%H:%M").time())
-    with col2:
-        wake_time = st.time_input("เวลาตื่นนอน", value=datetime.strptime("06:30", "%H:%M").time())
-    
-    # ลอจิกคำนวณชั่วโมงการนอน (รองรับการนอนข้ามวัน)
-    dt_bed = datetime.combine(date.today(), bed_time)
-    dt_wake = datetime.combine(date.today(), wake_time)
-    if dt_wake < dt_bed:
-        dt_wake += timedelta(days=1) # ถ้าเวลาตื่นน้อยกว่าเวลานอน แปลว่าตื่นอีกวันนึง
-        
-    sleep_hours = (dt_wake - dt_bed).total_seconds() / 3600
-    st.info(f"⏳ ระบบประมวลผล: คุณนอนหลับไปทั้งหมด **{sleep_hours:.1f} ชั่วโมง**")
+    # ใช้ number_input ให้ผู้ใช้พิมพ์เลขเอง หรือกดปุ่ม +/- ก็ได้
+    sleep_hours = st.number_input("เมื่อคืนคุณนอนหลับกี่ชั่วโมง?", min_value=0.0, max_value=24.0, value=7.0, step=0.5)
     
     st.divider()
     
@@ -124,7 +110,7 @@ elif st.session_state.page == 2:
     if st.button("🚀 ให้ AI แนะนำการออกกำลังกาย"):
         st.header("💡 ผลการวิเคราะห์และคำแนะนำ")
         
-        # ส่งข้อมูลดิบทั้งหมดเข้าฟังก์ชันสมองกล
+        # ส่งข้อมูลเข้าฟังก์ชันสมองกล
         result = get_ai_recommendation(st.session_state.bmi, sleep_hours, fatigue_score)
         
         # แสดงผลตามระดับความปลอดภัย
