@@ -61,36 +61,40 @@ if 'page' not in st.session_state:
 def go_to_page2():
     st.session_state.page = 2
 
+def go_to_page3():
+    st.session_state.page = 3
+
 def reset_app():
     st.session_state.page = 1
 
 # --- 5. ส่วนแสดงผลหน้าจอ UI ---
 
-# หน้าที่ 1: คำนวณ BMI
+# ---------------------------------------------------------
+# หน้าที่ 1: กรอกข้อมูล BMI (ซ่อนผลการคำนวณ)
+# ---------------------------------------------------------
 if st.session_state.page == 1:
-    st.title("Step 1: คำนวณค่า BMI ของคุณ ⚖️")
-    st.write("ระบบจะใช้ค่า BMI เพื่อประเมินความพร้อมของข้อต่อและระบบเผาผลาญ")
+    st.title("Step 1: ข้อมูลพื้นฐานร่างกาย ⚖️")
+    st.write("กรุณากรอกข้อมูลน้ำหนักและส่วนสูงของคุณ")
+    st.divider()
     
-    # อัปเดต: บังคับทศนิยม 1 ตำแหน่งด้วย format="%.1f" และขยับทีละ 0.1
     weight = st.number_input("น้ำหนัก (กก.)", min_value=30.0, max_value=200.0, value=65.0, step=0.1, format="%.1f")
     height = st.number_input("ส่วนสูง (ซม.)", min_value=100.0, max_value=250.0, value=170.0, step=0.1, format="%.1f")
     
-    bmi = weight / ((height/100)**2)
-    st.session_state.bmi = bmi
-    
-    st.subheader(f"ดัชนีมวลกาย (BMI) ของคุณคือ: {bmi:.2f}")
-    
-    # อัปเดต: เปลี่ยนคำในปุ่มกด
-    if st.button("ต่อไป"):
+    st.write("")
+    if st.button("ต่อไป ➡️"):
+        # คำนวณและเก็บค่า BMI ไว้ในความจำระบบ (ไม่แสดงออกหน้าจอ)
+        st.session_state.bmi = weight / ((height/100)**2)
         go_to_page2()
+        st.rerun()
 
-# หน้าที่ 2: ประเมินการพักผ่อนและความเหนื่อยล้า
+# ---------------------------------------------------------
+# หน้าที่ 2: กรอกข้อมูลการพักผ่อน (ซ่อนผลการคำนวณ)
+# ---------------------------------------------------------
 elif st.session_state.page == 2:
-    st.title("Step 2: วิเคราะห์สภาวะร่างกาย 🧠")
-    st.write("ให้ AI ช่วยวิเคราะห์ระดับความพร้อมของร่างกายคุณในวันนี้")
+    st.title("Step 2: สภาพร่างกายวันนี้ 🔋")
+    st.write("กรุณากรอกข้อมูลการพักผ่อนและความเหนื่อยล้า")
     st.divider()
     
-    # --- ส่วนที่ 1: กรอกเวลาเป็นข้อความ ---
     st.subheader("💤 ข้อมูลการพักผ่อน")
     col1, col2 = st.columns(2)
     with col1:
@@ -98,66 +102,89 @@ elif st.session_state.page == 2:
     with col2:
         wake_input = st.text_input("เวลาตื่นนอน (เช่น 08.01)", value="08.01")
     
-    # --- ระบบแปลงเวลาและตรวจสอบความถูกต้อง ---
-    error_time = False
-    sleep_hours = 0.0
-    
-    try:
-        b_parts = bed_input.replace(':', '.').split('.')
-        w_parts = wake_input.replace(':', '.').split('.')
-        
-        bed_h = int(b_parts[0])
-        bed_m = int(b_parts[1]) if len(b_parts) > 1 else 0
-        
-        wake_h = int(w_parts[0])
-        wake_m = int(w_parts[1]) if len(w_parts) > 1 else 0
-
-        if bed_h >= 24 or wake_h >= 24 or bed_m >= 60 or wake_m >= 60:
-            st.error("⚠️ กรุณากรอกเวลาให้ถูกต้อง (ชั่วโมง 0-23, นาที 0-59)")
-            error_time = True
-        else:
-            dt_bed = datetime.combine(date.today(), time(bed_h, bed_m))
-            dt_wake = datetime.combine(date.today(), time(wake_h, wake_m))
-            if dt_wake < dt_bed:
-                dt_wake += timedelta(days=1)
-                
-            total_seconds = (dt_wake - dt_bed).total_seconds()
-            sleep_hours = total_seconds / 3600
-            
-            display_h = int(total_seconds // 3600)
-            display_m = int((total_seconds % 3600) // 60)
-            
-            st.info(f"⏳ ระบบประมวลผล: คุณนอนหลับไปทั้งหมด **{display_h} ชั่วโมง {display_m} นาที**")
-            
-    except Exception:
-        st.error("⚠️ กรุณากรอกรูปแบบเวลาให้ถูกต้อง เช่น 23.30 หรือ 08.01")
-        error_time = True
-    
-    st.divider()
-    
-    # --- ส่วนที่ 2: ประเมินความเหนื่อยล้า ---
+    st.write("")
     st.subheader("🔋 ระดับความเหนื่อยล้า (Fatigue Level)")
     fatigue_score = st.slider("ประเมินความรู้สึกของคุณตอนนี้ (1 = สดชื่นมาก, 10 = ล้าจนอยากพัก)", 1, 10, 3)
     
+    st.write("")
+    col_back, col_next = st.columns([1, 5])
+    
+    with col_back:
+        if st.button("⬅️ กลับ"):
+            reset_app()
+            st.rerun()
+            
+    with col_next:
+        if st.button("ประมวลผลคำแนะนำ 🚀"):
+            error_time = False
+            try:
+                # คำนวณเวลาเงียบๆ ไม่โชว์ผล
+                b_parts = bed_input.replace(':', '.').split('.')
+                w_parts = wake_input.replace(':', '.').split('.')
+                
+                bed_h = int(b_parts[0])
+                bed_m = int(b_parts[1]) if len(b_parts) > 1 else 0
+                
+                wake_h = int(w_parts[0])
+                wake_m = int(w_parts[1]) if len(w_parts) > 1 else 0
+
+                if bed_h >= 24 or wake_h >= 24 or bed_m >= 60 or wake_m >= 60:
+                    st.error("⚠️ กรุณากรอกเวลาให้ถูกต้อง (ชั่วโมง 0-23, นาที 0-59)")
+                    error_time = True
+                else:
+                    dt_bed = datetime.combine(date.today(), time(bed_h, bed_m))
+                    dt_wake = datetime.combine(date.today(), time(wake_h, wake_m))
+                    if dt_wake < dt_bed:
+                        dt_wake += timedelta(days=1)
+                        
+                    total_seconds = (dt_wake - dt_bed).total_seconds()
+                    st.session_state.sleep_hours = total_seconds / 3600
+                    st.session_state.display_h = int(total_seconds // 3600)
+                    st.session_state.display_m = int((total_seconds % 3600) // 60)
+                    st.session_state.fatigue_score = fatigue_score
+                    
+            except Exception:
+                st.error("⚠️ กรุณากรอกรูปแบบเวลาให้ถูกต้อง เช่น 23.30 หรือ 08.01")
+                error_time = True
+
+            # ถ้าข้อมูลเวลาถูกต้อง ให้ไปหน้า 3
+            if not error_time:
+                go_to_page3()
+                st.rerun()
+
+# ---------------------------------------------------------
+# หน้าที่ 3: สรุปผลการประมวลผล และ คำแนะนำ AI
+# ---------------------------------------------------------
+elif st.session_state.page == 3:
+    st.title("Step 3: ผลการวิเคราะห์จาก AI 🧠")
+    
+    # กรอกข้อมูลสรุป (Dashboard)
+    st.subheader("📊 สรุปข้อมูลของคุณ")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("ดัชนีมวลกาย (BMI)", f"{st.session_state.bmi:.1f}")
+    col2.metric("เวลาพักผ่อน", f"{st.session_state.display_h} ชม. {st.session_state.display_m} นาที")
+    col3.metric("ความเหนื่อยล้า", f"{st.session_state.fatigue_score} / 10")
+    
     st.divider()
-
-    # ปุ่มประมวลผล
-    if st.button("🚀 ให้ AI แนะนำการออกกำลังกาย"):
-        if error_time:
-            st.warning("กรุณาแก้ไขเวลาการนอนให้ถูกต้องก่อนให้ AI ประมวลผลครับ")
-        else:
-            st.header("💡 ผลการวิเคราะห์และคำแนะนำ")
-            
-            result = get_ai_recommendation(st.session_state.bmi, sleep_hours, fatigue_score)
-            
-            if "🛑" in str(result):
-                st.error(result)
-            elif "⚠️" in str(result):
-                st.warning(result)
-            else:
-                st.success(result)
-                st.balloons()
-
-    st.write("") 
-    if st.button("⬅️ เริ่มต้นใหม่"):
+    
+    # ส่วนประมวลผลคำแนะนำจาก Excel
+    st.header("💡 คำแนะนำการออกกำลังกาย")
+    
+    result = get_ai_recommendation(
+        st.session_state.bmi, 
+        st.session_state.sleep_hours, 
+        st.session_state.fatigue_score
+    )
+    
+    if "🛑" in str(result):
+        st.error(result)
+    elif "⚠️" in str(result):
+        st.warning(result)
+    else:
+        st.success(result)
+        st.balloons()
+        
+    st.write("")
+    if st.button("🔄 เริ่มต้นใหม่"):
         reset_app()
+        st.rerun()
