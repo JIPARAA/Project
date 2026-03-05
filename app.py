@@ -88,11 +88,10 @@ elif st.session_state.page == 2:
     st.write("ให้ AI ช่วยวิเคราะห์ระดับความพร้อมของร่างกายคุณในวันนี้")
     st.divider()
     
-    # --- ส่วนที่ 1: กรอกเวลาเป็นข้อความ (แก้ปัญหา 0 หาย และนาทีเกิน 60) ---
+    # --- ส่วนที่ 1: กรอกเวลาเป็นข้อความ ---
     st.subheader("💤 ข้อมูลการพักผ่อน")
     col1, col2 = st.columns(2)
     with col1:
-        # ใช้ text_input แทน เพื่อให้พิมพ์ 08.01 ได้ตรงๆ
         bed_input = st.text_input("เวลาเข้านอน (เช่น 23.30)", value="23.30")
     with col2:
         wake_input = st.text_input("เวลาตื่นนอน (เช่น 08.01)", value="08.01")
@@ -102,30 +101,36 @@ elif st.session_state.page == 2:
     sleep_hours = 0.0
     
     try:
-        # รองรับทั้งการพิมพ์จุด (.) และโคลอน (:)
         b_parts = bed_input.replace(':', '.').split('.')
         w_parts = wake_input.replace(':', '.').split('.')
         
-        # แยกชั่วโมงและนาที
         bed_h = int(b_parts[0])
         bed_m = int(b_parts[1]) if len(b_parts) > 1 else 0
         
         wake_h = int(w_parts[0])
         wake_m = int(w_parts[1]) if len(w_parts) > 1 else 0
 
-        # เช็คว่าชั่วโมงต้องไม่เกิน 23 และนาทีต้องไม่เกิน 59
         if bed_h >= 24 or wake_h >= 24 or bed_m >= 60 or wake_m >= 60:
             st.error("⚠️ กรุณากรอกเวลาให้ถูกต้อง (ชั่วโมง 0-23, นาที 0-59)")
             error_time = True
         else:
-            # คำนวณเวลาถ้าข้อมูลถูกต้อง
             dt_bed = datetime.combine(date.today(), time(bed_h, bed_m))
             dt_wake = datetime.combine(date.today(), time(wake_h, wake_m))
             if dt_wake < dt_bed:
                 dt_wake += timedelta(days=1)
                 
-            sleep_hours = (dt_wake - dt_bed).total_seconds() / 3600
-            st.info(f"⏳ ระบบประมวลผล: คุณนอนหลับไปทั้งหมด **{sleep_hours:.2f} ชั่วโมง**")
+            # คำนวณเป็นวินาทีทั้งหมดก่อน
+            total_seconds = (dt_wake - dt_bed).total_seconds()
+            
+            # เก็บค่าทศนิยมไว้ให้ AI ประมวลผลเหมือนเดิม
+            sleep_hours = total_seconds / 3600
+            
+            # แปลงเป็น ชั่วโมง และ นาที สำหรับแสดงผลให้คนดู
+            display_h = int(total_seconds // 3600)
+            display_m = int((total_seconds % 3600) // 60)
+            
+            # แสดงผลแบบใหม่ อ่านง่าย ไม่งง
+            st.info(f"⏳ ระบบประมวลผล: คุณนอนหลับไปทั้งหมด **{display_h} ชั่วโมง {display_m} นาที**")
             
     except Exception:
         st.error("⚠️ กรุณากรอกรูปแบบเวลาให้ถูกต้อง เช่น 23.30 หรือ 08.01")
