@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from datetime import datetime, date, timedelta, time
 
 # --- 1. ตั้งค่าหน้าเว็บ ---
 st.set_page_config(page_title="AI Exercise Advisor", page_icon="💪", layout="centered")
@@ -25,8 +26,6 @@ def get_ai_recommendation(bmi, sleep_hours, fatigue_score):
     if df_rules.empty:
         return "⚠️ ระบบไม่พร้อมใช้งาน (ไม่พบฐานข้อมูล Excel)"
 
-    # --- 3.1 AI ทำการแปลงข้อมูลดิบ (Raw Data) ให้เป็นระดับสถานะ (Categorization) ---
-    
     # ประเมินเกณฑ์ BMI
     if bmi < 18.5: bmi_cat = "ผอม"
     elif 18.5 <= bmi <= 22.9: bmi_cat = "ปกติ"
@@ -44,7 +43,7 @@ def get_ai_recommendation(bmi, sleep_hours, fatigue_score):
     elif 4 <= fatigue_score <= 6: fatigue_cat = "ปานกลาง"
     else: fatigue_cat = "น้อย"
 
-    # --- 3.2 นำสถานะที่วิเคราะห์ได้ ไปเทียบกับ Rule Base ในฐานข้อมูล Excel ---
+    # นำสถานะที่วิเคราะห์ได้ ไปเทียบกับ Rule Base ในฐานข้อมูล Excel
     try:
         matched_rule = df_rules[
             (df_rules['ความเหนื่อยล้า'] == fatigue_cat) & 
@@ -93,10 +92,35 @@ elif st.session_state.page == 2:
     st.write("ให้ AI ช่วยวิเคราะห์ระดับความพร้อมของร่างกายคุณในวันนี้")
     st.divider()
     
-    # --- ส่วนที่ 1: กรอกเวลาพักผ่อน (เป็นตัวเลข) ---
-    st.subheader("💤 ข้อมูลการพักผ่อน")
-    # ใช้ number_input ให้ผู้ใช้พิมพ์เลขเอง หรือกดปุ่ม +/- ก็ได้
-    sleep_hours = st.number_input("เมื่อคืนคุณนอนหลับกี่ชั่วโมง?", min_value=0.0, max_value=24.0, value=7.0, step=0.5)
+    # --- ส่วนที่ 1: กรอกเวลาเป็นตัวเลขทศนิยม ---
+    st.subheader("💤 ข้อมูลการพักผ่อน (กรอกเป็นตัวเลข)")
+    col1, col2 = st.columns(2)
+    with col1:
+        # รับค่าเป็นทศนิยม เช่น 23.31
+        bed_input = st.number_input("เวลาเข้านอน (เช่น 23.30)", min_value=0.00, max_value=23.59, value=23.00, step=0.01, format="%.2f")
+    with col2:
+        wake_input = st.number_input("เวลาตื่นนอน (เช่น 06.00)", min_value=0.00, max_value=23.59, value=6.00, step=0.01, format="%.2f")
+    
+    # --- ระบบแปลงทศนิยมเป็นเวลา (แยกชั่วโมงและนาที) ---
+    bed_h = int(bed_input)
+    bed_m = int(round((bed_input - bed_h) * 100))
+    
+    wake_h = int(wake_input)
+    wake_m = int(round((wake_input - wake_h) * 100))
+    
+    # เช็คความถูกต้อง (เผื่อผู้ใช้เผลอกรอกนาทีเกิน 59 เช่น 23.80)
+    if bed_m >= 60 or wake_m >= 60:
+        st.error("⚠️ กรุณากรอก 'นาที' ไม่เกิน 59 (หลังจุดทศนิยมต้องไม่เกิน .59 ครับ)")
+        sleep_hours = 0.0 # กันระบบพัง
+    else:
+        # คำนวณเวลา
+        dt_bed = datetime.combine(date.today(), time(bed_h, bed_m))
+        dt_wake = datetime.combine(date.today(), time(wake_h, wake_m))
+        if dt_wake < dt_bed:
+            dt_wake += timedelta(days=1) # กรณีตื่นอีกวัน
+            
+        sleep_hours = (dt_wake - dt_bed).total_seconds() / 3600
+        st.info(f"⏳ ระบบประมวลผล: คุณนอนหลับไปทั้งหมด **{sleep_hours:.2f} ชั่วโมง**")
     
     st.divider()
     
@@ -108,19 +132,20 @@ elif st.session_state.page == 2:
 
     # ปุ่มประมวลผล
     if st.button("🚀 ให้ AI แนะนำการออกกำลังกาย"):
-        st.header("💡 ผลการวิเคราะห์และคำแนะนำ")
-        
-        # ส่งข้อมูลเข้าฟังก์ชันสมองกล
-        result = get_ai_recommendation(st.session_state.bmi, sleep_hours, fatigue_score)
-        
-        # แสดงผลตามระดับความปลอดภัย
-        if "🛑" in str(result):
-            st.error(result)
-        elif "⚠️" in str(result):
-            st.warning(result)
+        if bed_m >= 60 or wake_m >= 60:
+            st.warning("กรุณาแก้ไขเวลาการนอนให้ถูกต้องก่อนประมวลผลครับ")
         else:
-            st.success(result)
-            st.balloons()
+            st.header("💡 ผลการวิเคราะห์และคำแนะนำ")
+            
+            result = get_ai_recommendation(st.session_state.bmi, sleep_hours, fatigue_score)
+            
+            if "🛑" in str(result):
+                st.error(result)
+            elif "⚠️" in str(result):
+                st.warning(result)
+            else:
+                st.success(result)
+                st.balloons()
 
     st.write("") 
     if st.button("⬅️ เริ่มต้นใหม่"):
