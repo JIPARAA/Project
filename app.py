@@ -21,7 +21,7 @@ def load_data():
 
 df_rules = load_data()
 
-# --- 3. ฟังก์ชันประมวลผล AI (Expert System Logic) ---
+# --- 3. ฟังก์ชันประมวลผล AI ---
 def get_ai_recommendation(bmi, sleep_hours, fatigue_score):
     if df_rules.empty:
         return "⚠️ ระบบไม่พร้อมใช้งาน (ไม่พบฐานข้อมูล Excel)"
@@ -36,6 +36,7 @@ def get_ai_recommendation(bmi, sleep_hours, fatigue_score):
     elif 6 <= sleep_hours <= 7: sleep_cat = "ปานกลาง"
     else: sleep_cat = "มาก"
 
+    # อัปเดต: สไลเดอร์เริ่มที่ 0 ดังนั้น 0-3 คือ น้อย, 4-6 กลาง, 7-10 มาก
     if fatigue_score >= 7: fatigue_cat = "มาก"
     elif 4 <= fatigue_score <= 6: fatigue_cat = "ปานกลาง"
     else: fatigue_cat = "น้อย"
@@ -54,7 +55,7 @@ def get_ai_recommendation(bmi, sleep_hours, fatigue_score):
     except KeyError as e:
         return f"⚠️ ชื่อคอลัมน์ใน Excel ไม่ถูกต้อง: {e}"
 
-# --- 4. ระบบจัดการหน้าเว็บ (Session State) ---
+# --- 4. ระบบจัดการหน้าเว็บ ---
 if 'page' not in st.session_state:
     st.session_state.page = 1
 
@@ -70,25 +71,29 @@ def reset_app():
 # --- 5. ส่วนแสดงผลหน้าจอ UI ---
 
 # ---------------------------------------------------------
-# หน้าที่ 1: กรอกข้อมูล BMI (ซ่อนผลการคำนวณ)
+# หน้าที่ 1: กรอกข้อมูล BMI
 # ---------------------------------------------------------
 if st.session_state.page == 1:
     st.title("Step 1: ข้อมูลพื้นฐานร่างกาย ⚖️")
     st.write("กรุณากรอกข้อมูลน้ำหนักและส่วนสูงของคุณ")
     st.divider()
     
-    weight = st.number_input("น้ำหนัก (กก.)", min_value=30.0, max_value=200.0, value=65.0, step=0.1, format="%.1f")
-    height = st.number_input("ส่วนสูง (ซม.)", min_value=100.0, max_value=250.0, value=170.0, step=0.1, format="%.1f")
+    # อัปเดต: ให้ค่าเริ่มต้น (value) และค่าต่ำสุด (min_value) เป็น 0.0
+    weight = st.number_input("น้ำหนัก (กก.)", min_value=0.0, max_value=200.0, value=0.0, step=0.1, format="%.1f")
+    height = st.number_input("ส่วนสูง (ซม.)", min_value=0.0, max_value=250.0, value=0.0, step=0.1, format="%.1f")
     
     st.write("")
     if st.button("ต่อไป ➡️"):
-        # คำนวณและเก็บค่า BMI ไว้ในความจำระบบ (ไม่แสดงออกหน้าจอ)
-        st.session_state.bmi = weight / ((height/100)**2)
-        go_to_page2()
-        st.rerun()
+        # อัปเดต: ดักจับ Error ป้องกันคนไม่กรอกข้อมูลแล้วกดข้าม (เพราะส่วนสูงเป็น 0 จะหารไม่ได้)
+        if weight <= 0 or height <= 0:
+            st.warning("⚠️ กรุณากรอกน้ำหนักและส่วนสูงให้มากกว่า 0 ก่อนไปต่อครับ")
+        else:
+            st.session_state.bmi = weight / ((height/100)**2)
+            go_to_page2()
+            st.rerun()
 
 # ---------------------------------------------------------
-# หน้าที่ 2: กรอกข้อมูลการพักผ่อน (ซ่อนผลการคำนวณ)
+# หน้าที่ 2: กรอกข้อมูลการพักผ่อน
 # ---------------------------------------------------------
 elif st.session_state.page == 2:
     st.title("Step 2: สภาพร่างกายวันนี้ 🔋")
@@ -98,13 +103,16 @@ elif st.session_state.page == 2:
     st.subheader("💤 ข้อมูลการพักผ่อน")
     col1, col2 = st.columns(2)
     with col1:
-        bed_input = st.text_input("เวลาเข้านอน (เช่น 23.30)", value="23.30")
+        # อัปเดต: ค่าเริ่มต้นเป็น 00.00
+        bed_input = st.text_input("เวลาเข้านอน (เช่น 23.30)", value="00.00")
     with col2:
-        wake_input = st.text_input("เวลาตื่นนอน (เช่น 08.01)", value="08.01")
+        # อัปเดต: ค่าเริ่มต้นเป็น 00.00
+        wake_input = st.text_input("เวลาตื่นนอน (เช่น 08.01)", value="00.00")
     
     st.write("")
     st.subheader("🔋 ระดับความเหนื่อยล้า (Fatigue Level)")
-    fatigue_score = st.slider("ประเมินความรู้สึกของคุณตอนนี้ (1 = สดชื่นมาก, 10 = ล้าจนอยากพัก)", 1, 10, 3)
+    # อัปเดต: สไลเดอร์เริ่มที่ 0 สิ้นสุดที่ 10 และค่าเริ่มต้นที่ลูกกลิ้งวางอยู่คือ 0
+    fatigue_score = st.slider("ประเมินความรู้สึกของคุณตอนนี้ (0 = สดชื่นมาก, 10 = ล้าจนอยากพัก)", 0, 10, 0)
     
     st.write("")
     col_back, col_next = st.columns([1, 5])
@@ -118,7 +126,6 @@ elif st.session_state.page == 2:
         if st.button("ประมวลผลคำแนะนำ 🚀"):
             error_time = False
             try:
-                # คำนวณเวลาเงียบๆ ไม่โชว์ผล
                 b_parts = bed_input.replace(':', '.').split('.')
                 w_parts = wake_input.replace(':', '.').split('.')
                 
@@ -147,18 +154,16 @@ elif st.session_state.page == 2:
                 st.error("⚠️ กรุณากรอกรูปแบบเวลาให้ถูกต้อง เช่น 23.30 หรือ 08.01")
                 error_time = True
 
-            # ถ้าข้อมูลเวลาถูกต้อง ให้ไปหน้า 3
             if not error_time:
                 go_to_page3()
                 st.rerun()
 
 # ---------------------------------------------------------
-# หน้าที่ 3: สรุปผลการประมวลผล และ คำแนะนำ AI
+# หน้าที่ 3: สรุปผล
 # ---------------------------------------------------------
 elif st.session_state.page == 3:
     st.title("Step 3: ผลการวิเคราะห์จาก AI 🧠")
     
-    # กรอกข้อมูลสรุป (Dashboard)
     st.subheader("📊 สรุปข้อมูลของคุณ")
     col1, col2, col3 = st.columns(3)
     col1.metric("ดัชนีมวลกาย (BMI)", f"{st.session_state.bmi:.1f}")
@@ -167,7 +172,6 @@ elif st.session_state.page == 3:
     
     st.divider()
     
-    # ส่วนประมวลผลคำแนะนำจาก Excel
     st.header("💡 คำแนะนำการออกกำลังกาย")
     
     result = get_ai_recommendation(
